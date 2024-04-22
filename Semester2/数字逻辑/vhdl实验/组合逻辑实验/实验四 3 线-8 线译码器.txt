@@ -1,0 +1,31 @@
+library ieee;
+use ieee.std_logic_1164.all;--定义库
+entity exam4 is 
+port (
+	G1,GA,GB:in std_logic;--定义使能端
+	X:in std_logic_vector(2 downto 0);--定义输入
+	Y:out std_logic_vector(7 downto 0)--定义输出
+);
+end exam4;
+architecture threeToeight of exam4 is 
+	begin 
+	process(G1,GA,GB,X) 
+	begin 
+	if (G1='0' or GA='1' or GB='1') then Y<="11111111";--使能端不开启
+		else --使能端开启
+			case X is--3to8译码
+				when "000"=>Y<="11111110";
+				when "001"=>Y<="11111101";
+				when "010"=>Y<="11111011";
+				when "011"=>Y<="11110111";
+				when "100"=>Y<="11101111";
+				when "101"=>Y<="11011111";
+				when "110"=>Y<="10111111";
+				when "111"=>Y<="01111111";
+				--when others =>Y<="11111111";
+			end case;
+		end if;
+	end process;
+end;--结束
+				
+

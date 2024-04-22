@@ -1,0 +1,316 @@
+题号: 2185,2187,2189,2191,2060
+A.现有函数f(n)，n为大于等于0的整数。当n等于0时f(n) = 0，当n大于0时 f(n)=f(n-1) + n^2+2n
+请你写一段程序来计算f(n)的值。
+注意：此题要求用递归求解，非递归方法不得分。
+输入：为一个整数n(0<=n<=1800，此条件下，f(n)可以用int存储)。
+输出：也是一个整数，为对应的f(n)的值。
+-------------------------------------------------------------
+#include <stdio.h>
+int rec_f2(int n);
+int main(){
+	int n;
+	scanf("%d",&n);
+	printf("%d\n",rec_f2(n));	
+}
+int rec_f2(int n){
+	if (n==0)
+		return 0;
+	else return n*n+2*n+rec_f2(n-1);
+}
+
+B.计算导论与程序设计课程要开习题课，由于教室座位有限，所以决定限制参加人数。
+于是规定：1、最多允许一半的班级里的同学参加；
+2、可以参加的班级最多允许一半的同学参加。
+现请你写一段程序来计算习题课最多可能有多少个学生参加。
+输入为两行，第一行为一个整数n(0<n<100),代表班级的个数，
+第二行为n个正整数，分别代表每个班级的人数。
+输出只有一行，为能够参加习题课的人数的最大值。
+（当数字为奇数时，一半指的是该数减一后除以2，测试用例保证所有整数可以用 int 类型存储）
+输入样例
+5
+4 5 6 7 8
+输出样例
+7
+------------------------------------------------------------------------
+思路：max{a1,a2,...,an中一半班级，每班一半学生}
+将a[]降序排序,取前一半班级，然后每班人数的一半累加；
+------------------------------------------------------------------------
+#include <stdio.h>
+#define SIZE 100
+int createArrayN(int data[], int size);
+int selectSortDw(int a[],int last);
+int findMax(int data[], int startLoc, int endLoc);
+int maxHalfTotal(const int a[],int last);
+int main(){
+	int class[SIZE]={0},last,num;	
+	last=createArrayN(class,SIZE);	
+	selectSortDw(class,last);
+	num=maxHalfTotal(class,last);
+	printf("%d\n",num);
+	return 0;
+}
+int createArrayN(int data[], int size)
+{
+   int i,n;
+   scanf("%d", &n);
+   for(i = 0; i<n && i<size; i++)
+       scanf("%d", &data[i]);
+   return i-1;//返回last
+}
+int selectSortDw(int a[],int last)  
+{	int i,maxLoc,temp;
+	for (i = 0; i <= last-1; i++){
+		maxLoc = findMax(a,i,last);
+		if (i != maxLoc){ 
+		   temp = a[i];
+		   a[i] = a[maxLoc];
+		   a[maxLoc] = temp;
+		}        
+	} 
+}
+int findMax(int data[], int startLoc, int endLoc)
+{	int i, maxloc;
+	maxloc = startLoc;
+	for (i = startLoc+1; i <= endLoc; i++)
+	    if (data[i] > data[maxloc]) 
+		    maxloc = i;
+	return maxloc;
+} 
+int maxHalfTotal(const int a[],int last){
+	int i,halfCls,halfStu,total;
+	
+	if ((last+1)%2==1) 
+		halfCls=last/2;
+	else  halfCls=(last+1)/2;
+	
+	for (i=0,total=0;i<halfCls;i++)
+		if (a[i]%2==1) total +=(a[i]-1)/2;
+		else total +=a[i]/2;
+	return total;
+}
+
+C.无论在中国象棋还是国际象棋中“马”都是走“日”字的。比如我们把国际象棋的棋盘的左上角的坐标设为（0，0），它右边格子的坐标为（0，1），下边的格子坐标为（1，0），右下格子的坐标为（1，1），其它点的坐标以此类推。如果马现在位于（4，4）上，那么它一步能走到的格子的坐标分别为（3,2)、(2,3)、(2,5)、(3,6)、(5,6)、(6,5)、(6,3)、(5,2)，现在我们把这八种走法分别标记为1、2、3、4、5、6、7、8，也就是说当输入为1是，代表马向左上偏下的点走，输入为2时代表马向左上偏上的点走，其它依次类推。现请你写一段程序，记录马在棋盘上行走的路线。
+输入：
+先是八行，每行为长度为8的字符串，代表棋盘上每个格里的字符（只包含大写字母）。
+第9行是2个整数，代表马的初始位置。
+第10行是一个字符串（长度大于0小于30），代表马每一步如何走。测试数据保证合法，且保证不存在走到棋盘以外的情况。
+输出：
+只有一行，依次为马行走路线上的格子里的字符（包括马的初始位置）。
+输入样例
+HIJKLMNO
+PQERSTUV
+WDXYLZAB
+CDEFGHLI
+LJKLMNOP
+QRRSTUVO
+WXYZOQWE
+RTYUIOWP
+0 0
+555671113
+输出样例
+HELLOWORLD
+---------------------------------------------------------------------------------------------
+思路：棋盘字符存储为二维字符数组，
+马走日就是根据1~8的位置规则对二维数组的访问。
+---------------------------------------------------------------------------------------------
+#include<stdio.h>
+#define ROWS 8
+#define COLS 9
+#define PATH 31
+int main()
+{
+    char board[ROWS][COLS] ;//保存棋盘 
+    char way[PATH],pass[PATH];//马走轨迹,途经字符 
+    int	x,y,i,j;   
+    
+    for(i=0;i<8;i++)
+    	gets(board[i]) ;//读入棋盘 
+    scanf("%d%d",&y,&x);
+    gets(way); while (way[0]=='\0') gets(way);
+    //scanf("%s",way);
+
+    pass[0]=board[y][x];//第一个字符 
+    for(i=0;way[i]!='\0';i++)
+    {
+    	switch(way[i])//依据移动方向改变棋盘坐标 
+    	{
+    		case '1':x-=2; y-=1;	break ;
+    		case '2':x-=1; y-=2;	break ;
+    		case '3':x+=1; y-=2;	break ;
+    		case '4':x+=2; y-=1;	break ; 
+			case '5':x+=2; y+=1;	break ;   		
+			case '6':x+=1; y+=2;	break ;
+    		case '7':x-=1; y+=2;	break ;    		
+			case '8':x-=2; y+=1;	break ;    		
+    	}
+    	pass[i+1] = board[y][x];//保存路径 
+    }
+    pass[i+1] = '\0' ;  //字符串结束标志 
+    puts(pass);
+
+    return 0;
+}
+
+D.题目描述
+某处发生交通事故，肇事车辆逃逸。现场有价值的线索为若干块残缺的车牌。
+经技术人员分析得出以下结论，
+1、这些残缺的车牌来自同一块车牌且为肇事车辆悬挂；
+2、每块上只包含一个可以辨认的号码；
+3、这些号码的顺序是可以确定的。
+现请你根据这些信息写一段程序判断某车牌是否可能是肇事车辆当时悬挂的车牌。
+输入第一行为一个字符串（字符串中只包含大写字母及数字，且长度不超过10），
+   代表通过残缺车牌识别出的号码且这些号码已按应有的次序排好,
+   也就是说如果在输入的字符串中某个号码(比如A)排在另外一个号码（比如B）的前边,那么在完整的车牌中A也必定在B前边；
+第二行为一个正整数n（0<n<200)，代表待检验车牌的数量；
+后边n行，每行均为一个长度为10的字符串（字符串中只包含大写字母及数字）,代表n个待检验车牌。
+输出为若干行，每行为一个可能的肇事车辆的车牌（多行数据输出的顺序为：按字符串大小由小到大输出，如AAAAA00000在AAAAB00000前边输出）。测试用例保证输入合法且至少有一个车牌可能是肇事车辆的车牌。
+输入样例
+A0
+2
+AAA0000123
+BBB0000123
+输出样例
+AAA0000123
+-----------------------------------------------------------------------------------
+思路：字符串匹配问题，加字符串排序。
+待检验车牌，先要升序排序，再与残缺车牌进行逐字符进行匹配。
+---------------------------------------------------------------------------------------------
+#include<stdio.h>
+#include<stdlib.h>
+#define SIZE 200
+#define LEN 11
+void strSortByPtr(char *a[], int last);
+int strCmp(const char *str1, const char *str2);
+int noMatch(const char *t, const char *s);
+int main()
+{
+	int n,len,i;
+	char * no[SIZE],partNo[LEN];
+	
+	scanf("%s",partNo);
+	scanf("%d",&n);
+	for(i = 0; i <= n-1; i++){
+         		no[i] =(char *) malloc(sizeof(char)*LEN);
+         		if (no[i]==NULL)
+            			return -1;
+         		else  scanf("%s",no[i]); //读取待检验车牌
+   	}
+   	strSortByPtr(no, n-1); /*升序排序，使用指针数组名作实参*/
+
+  	for(i = 0; i <= n-1; i++)//先释放字符串的内存，再释放指针数组
+   	{
+		if (noMatch(partNo,no[i]))
+		 	puts(no[i]);
+        		free(no[i]);
+      		no[i] = NULL;      
+  	} 
+   	return 0;
+}
+void strSortByPtr(char *a[], int last)
+{
+    char * tempPtr;
+    int i, j, min;
+    /*使用选择法排序, 外循环每循环一次,确定name[i]的值*/
+    for(i=0; i<= last-1; i++){ 	/*外循环：确定a[i]的值*/
+         min=i; 			
+         for(j=i+1; j<=last; j++) 	
+              if(strCmp(a[min],a[j])>0) /*存在更小的串*/
+                   min=j; 	
+ /*交换a[min]和a[i],使a[i]指向a[i]~a[last]指向串中的最小串*/	
+          if(min!=i){ 		
+              tempPtr= a[i], a[i]= a[min], a[min]=tempPtr; }
+    }
+}
+int strCmp(const char *str1, const char *str2)
+{
+	for( ;*str1&&*str2&&*str1==*str2;str1++,str2++)
+		;
+	if(*str1==*str2)  return 0;
+   	else if (*str1>*str2) return 1;
+   	else return -1;          
+}
+int noMatch(const char *t, const char *s)
+{	
+       while (*s && *t){
+	if (*s==*t) t++;
+        	s++;
+       }
+       if(*t=='\0')  
+    	return 1;
+       else
+                 return 0;
+}
+
+E.你正在玩一款新的游戏，在游戏中你有N个用于给你的战士补充能量的道具和M个战士。这N个道具都有一个能量值，代表该道具能给战士提供的总能量，给战士补充后该值会永久减少，该值为0后该道具就没有用了。例如某道具的能量值为500，如果用它给一个战士补充了300的能量，则该道具的能量值变为200。现在你要带领你的战士们出征了，在出征前你要给这M个战士补充能量。假设初始时每个战士的能量都为0，补充完后所有的战士的能量都一样。如果一个战士在补充能量时只能使用1个道具（1个道具可以给若干个战士补充能量）。现在请你写一段程序来计算一下，你最大能给每个战士补充的能量值是多少？
+输入：
+第一行为2个整数，分别代表N（1<=N<=10000）和M(1<=M<=20000)
+第二行为N个整数，代表这N个道具能提供的能量值（所有能量值大于等于100且小于等于2000000）。
+输出：
+为一个整数，代表你最大能给每个战士补充的能量值。测试数据保证有解。
+输入样例
+5 13
+765 506 483 329 492
+输出样例
+164
+-------------------------------------
+思路: 穷举x，上限max(N1..Nn), 下限1，i--，
+当N1/i+N2/i+...+Nn/i >=M 时就是解。
+因为运行超时,必须提高解题效率,
+所以在1..max之间的有序序列中二分查找，
+当N1/mid+N2/mid+...+Nn/mid >=M 时，检查mid+1若不是解，则mid是最大解。
+否则，若<M，说明mid大了，进入左半区继续二分查找；
+            若>=M，说明mid小于最大解了，进入右半区继续二分查找。
+-------------------------------------------------------------------
+#include <stdio.h>
+#define SIZE 10000
+int createArrayN2(int data[], int num);
+int maxArray(int data[], int last);
+int divArray(int data[], int last,int num);
+int main(){
+	int n,m,a[SIZE]={0},last;
+	int limit,i,low,high,middle,x;
+	scanf("%d%d",&n,&m);
+	//printf("n=%d,m=%d\n",n,m);
+	last=createArrayN2(a,n);			
+	limit=maxArray(a,last);
+	//printf("limit=%d\n",limit);
+	/*for (i=limit,found=0;i>=1 && !found;i--){
+		x=divArray(a,last,i);
+		if (x>=m)
+			found=1;
+	}
+	printf("%d\n",i+1);*/
+	low=1;high=limit;
+ 	while(low <= high){
+      		middle = (low + high)/2;
+      		x=divArray(a,last,middle);
+      		if (x>=m && divArray(a,last,middle+1)<m)
+         			break;
+      		else if(x<m)
+          			high = middle - 1;
+      		else
+		          	low = middle + 1;
+   	}
+   	printf("%d\n",middle);
+}
+int createArrayN2(int data[], int num)
+{
+   int i;
+   for(i = 0; i<num; i++)
+       scanf("%d", &data[i]);
+   return i-1;//返回last
+}
+int maxArray(int data[], int last)
+{
+   int i,max;
+   for(i = 0,max=data[0]; i<=last; i++)
+       if (data[i]>max) max=data[i];
+   return max;
+}
+int divArray(int data[], int last,int num)
+{
+   int i,quio;
+   for(i = 0,quio=0; i<=last; i++)
+       quio+=data[i]/num;
+   return quio;
+}

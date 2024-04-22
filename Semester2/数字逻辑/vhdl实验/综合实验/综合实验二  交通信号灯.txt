@@ -1,0 +1,64 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity control is
+	port(
+	clk:in std_logic;--1hz时钟信号
+	emerg,reset:in std_logic;--紧急信号
+	lights:out std_logic_vector(2 downto 0)--状态显示 0-4
+	);
+	end control;
+	
+	architecture traffic of control is
+		type states is (s0,s1,s2,s3,s4);--自定义类型 s0 s1 s2 s3 s4
+		signal state :states;--状态储存
+		signal emerg_status,reset_status:std_logic:='0';--紧急状态信号和重置信号
+		signal count:integer range 1 to 50 :=50;--计数器
+	begin 
+	
+	
+	p1:process(emerg,reset)
+	begin
+			reset_status<=reset;
+			emerg_status<=emerg;
+	end process p1;
+	--复位信号与紧急信号接收
+	p2:process (clk)
+	begin 
+			if(reset_status='1') then 
+					count<=50;--重置信号
+			elsif (emerg_status='1') then  count<=count;--进入紧急状态，count不变化
+			else 
+				if (clk'event and clk = '1' ) then 
+					if (count=1) then count<=50;
+					else count<=count-1;
+					end if;
+				end if;
+			end if;
+	end process;
+--计数器运行
+	p3:process(emerg_status,count,reset_status)
+	begin
+		if( emerg_status= '1')  then state <=s0;--进入紧急状态
+		
+		else 
+			if(count>=31) then state<=s1;
+				elsif(count<=30 and count >=26) then state<=s2;
+				elsif(count<=25 and count >=6) then state<=s3;
+				else state<=s4;
+			end if;
+		end if;
+		if reset_status='1' then state<=s1;--重置
+		end if;
+		case state is
+			when s0=>lights<="000";
+			when s1=>lights<="001";
+			when s2=>lights<="010";
+			when s3=>lights<="011";
+			when s4=>lights<="100";
+		end case;
+	end process;
+--状态转移进程
+end;
+--结束

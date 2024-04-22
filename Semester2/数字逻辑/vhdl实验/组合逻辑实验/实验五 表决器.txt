@@ -1,0 +1,27 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use ieee.math_real.all;--定义库
+
+
+entity exam5 is
+  port(
+    X:in std_logic_vector(3 downto 0);--投票人数以及情况，1表示赞成，0表示反对。
+    Y:out std_logic);--投票结果，1表示通过，0表示不通过
+end exam5;
+architecture vote_4man of exam5 is 
+  begin
+    process(X)
+      variable sum :integer range 0  to 4;--用来统计票数 范围0-4
+begin 
+    sum :=0; --初始化0
+    for  n in  0 to 3 loop --循环
+        if X(n)='1' then 
+		  sum:=sum+1; --统计票数 1表示同意 0表示不同意
+         end if;
+    end loop;
+  if(sum>=3) then Y<='1';--赞成人数大于一半  输出1
+  else  Y<='0'; --赞成人数没超过一半，输出0
+  end if;
+end process;
+end vote_4man;--结束

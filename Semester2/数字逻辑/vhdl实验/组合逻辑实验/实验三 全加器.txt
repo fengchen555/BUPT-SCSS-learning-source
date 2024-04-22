@@ -1,0 +1,14 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned;--定义库
+entity exam3 is
+	port(
+		a,b,c0:in std_logic;--定义输入，co表示地位进位，a，b分别表示加数和被加数。
+		s,c1:out std_logic--定义输出 -c1表示高位进位。s表示加法结果
+	);
+end exam3;
+architecture alladd2 of exam3 is
+begin--进行计算
+	s<=(a xor b)xor c0;               --s=a⊕b⊕ci
+	c1<=((a xor b)and c0)or(a and b); --c1=c0(a⊕b)+ab
+end alladd2;--结束

@@ -1,0 +1,25 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+use ieee.numeric_std.all;
+entity exam2 is
+port(
+clk : in std_logic;
+reset : in std_logic;
+q : out std_logic_vector(3 downto 0)--本题为2^4,要想设置成2^n,把3改成n-1就可以
+);
+end exam2;
+
+architecture counter of exam2 is 
+signal temp :std_logic_vector(3 downto 0);--定义一个信号数组，暂时存放，后面传递给输出
+begin
+process(clk,reset)
+ begin
+		   if clk'event and clk='1' then --时钟脉冲上升沿触发
+				if reset='1' then temp<=(others=>'0');--复位reset为高电平有效--temp清零
+				else temp<=temp+1;--不复位就+1
+			end if;
+			end if;
+end process;
+q<=temp;	
+end counter;

@@ -1,0 +1,37 @@
+library ieee;
+
+use ieee.std_logic_1164.all;--定义库
+
+entity exam2 is
+
+port( A: in std_logic_vector(3 downto 0);
+
+B: in std_logic_Vector(3 downto 0);--定义两个4长度的数组输入
+
+YA,YB,YC: out std_logic);--定义输出 YA表示A更大 YB=1表示B更大，YC等于1表示相等
+
+end exam2;
+
+architecture compare4 of exam2 is
+
+begin
+
+process(A,B)
+
+variable comb1,comb2: std_logic_vector(3 downto 0);--定义两个变量
+
+begin
+
+comb1:=A(3)&A(2)&A(1)&A(0);--变量1赋值A
+comb2:=B(3)&B(2)&B(1)&B(0);--变量2赋值B
+--进行比较
+if(comb1>comb2) then YA<='1'; YB <='0'; YC<='0';--A大
+
+elsif(comb1<comb2) then YA<='0'; YB<='1'; YC<='0';--B大
+else YC<='1'; YA<='0'; YB<='0';--相等
+
+end if;
+
+end process;
+
+end compare4;--结束

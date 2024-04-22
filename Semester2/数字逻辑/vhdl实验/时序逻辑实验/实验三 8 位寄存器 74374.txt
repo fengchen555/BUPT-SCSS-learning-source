@@ -1,0 +1,25 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity exam3 is
+  port ( OE : in std_logic;
+         clk : in std_logic;
+         data : out std_logic_vector(7 downto 0);
+         tmp: in std_logic_vector(7 downto 0)
+        );
+end exam3;
+
+architecture bit8epb of exam3 is
+--signal tmp: std_logic_vector(7 downto 0);
+begin
+process(OE, clk)
+
+begin
+  if(OE = '0') then 
+    if clk'event and clk='1' then data <= tmp;
+    end if;
+  else data <= "ZZZZZZZZ";
+  end if;
+
+end process;
+end bit8epb;

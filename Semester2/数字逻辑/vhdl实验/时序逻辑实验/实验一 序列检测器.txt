@@ -1,0 +1,58 @@
+library ieee;
+use ieee.std_logic_1164.all;--定义库
+entity exam1 is 
+  port (
+  X,CLK,CLR:in std_logic;--定义输入  时钟脉冲  复位信号  
+    Y: out std_logic--定义输出
+  );
+  end exam1;
+  architecture test1110010 of exam1  is
+    type state is(s0,s1,s2,s3,s4,s5,s6,s7);--自定义数据类型
+    signal c_state,s_state:state;--定义现态  次态 并使用自定义数据类型
+  begin 
+  process (CLK,CLR)--判断是否复位 以及是否进行状态转换 时钟脉冲是否到达
+  begin
+  if CLR='1' then c_state<=s0;--复位
+      elsif(CLK'event and CLK='1') 
+        then c_state<=s_state;
+      end if;
+  end process;
+  process (c_state,X,s_state)
+  begin
+      case c_state is--状态转移
+      when s0=>Y<='0';
+        if(X='1') then s_state<=s1;
+        else  s_state<=s0;
+        end if;
+      when s1=>Y<='0';
+        if(X='1') then s_state<=s2;
+        else  s_state<=s0;
+        end if;
+      when s2=>Y<='0';
+        if(X='1') then s_state<=s3;
+        else  s_state<=s0;
+        end if;
+      when s3=>Y<='0';
+        if(X='1') then s_state<=s3;
+        else  s_state<=s4;
+        end if;
+      when s4=>Y<='0';
+        if(X='1') then s_state<=s1;
+        else  s_state<=s5;
+        end if;
+      when s5=>Y<='0';
+        if(X='1') then s_state<=s6;
+        else s_state<=s0;
+        end if;
+      when s6=>Y<='0';
+        if(X='1') then s_state<=s0;
+        else  s_state<=s7;
+        end if;
+      when s7=>Y<='1';
+      if(X='1') then s_state<=s1;
+      else  s_state<=s0;
+      end if;
+    end case;
+  end process;
+  end test1110010;
+    
