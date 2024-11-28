@@ -1,0 +1,2 @@
+代码文件放在project2下，实验报告在project2/src目录下，project2/test1为单独测试的样例输出，你也可以查看此文件夹查看是否符合测试结果，因为test文件夹文件太多了
+如何使用：project2目录下，python3 test.py即可在test中直接生成对应的测试结果、或者在该目录下make可生成编译器，然后bin/bplc 对应的文件目录即可

@@ -1,0 +1,643 @@
+Rules useless in parser due to conflicts
+
+   24 Array: LB Values RB RB error
+   25      | LB Values RB COMMA error
+
+
+State 15 conflicts: 1 shift/reduce
+
+
+Grammar
+
+    0 $accept: Json $end
+
+    1 Json: Value
+
+    2 Value: Object
+    3      | Array
+    4      | STRING
+    5      | NUMBER
+    6      | TRUE
+    7      | FALSE
+    8      | VNULL
+
+    9 Object: LC RC
+   10       | LC Members COMMA RC error
+   11       | LC Members RC Value error
+   12       | LC Members RC
+
+   13 Members: Member
+   14        | Member COMMA RC error
+   15        | Member COMMA error
+   16        | Member COMMA Members
+
+   17 Member: STRING COLON COLON error
+   18       | STRING Value error
+   19       | STRING COLON NUMBER NUMBER error
+   20       | STRING COLON Value
+   21       | STRING COMMA Value error
+
+   22 Array: LB RB
+   23      | LB Values RB
+   24      | LB Values RB RB error
+   25      | LB Values RB COMMA error
+   26      | LB Values RC error
+   27      | LB Values error
+   28      | LB COMMA error
+
+   29 Values: Value
+   30       | Value COLON Value error
+   31       | Value COMMA RB error
+   32       | Value COMMA COMMA error
+   33       | Value COMMA Values
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+error (256) 10 11 14 15 17 18 19 21 24 25 26 27 28 30 31 32
+LC (258) 9 10 11 12
+RC (259) 9 10 11 12 14 26
+LB (260) 22 23 24 25 26 27 28
+RB (261) 22 23 24 25 31
+COLON (262) 17 19 20 30
+COMMA (263) 10 14 15 16 21 25 28 31 32 33
+STRING (264) 4 17 18 19 20 21
+NUMBER (265) 5 19
+TRUE (266) 6
+FALSE (267) 7
+VNULL (268) 8
+
+
+Nonterminals, with rules where they appear
+
+$accept (14)
+    on left: 0
+Json (15)
+    on left: 1, on right: 0
+Value (16)
+    on left: 2 3 4 5 6 7 8, on right: 1 11 18 20 21 29 30 31 32 33
+Object (17)
+    on left: 9 10 11 12, on right: 2
+Members (18)
+    on left: 13 14 15 16, on right: 10 11 12 16
+Member (19)
+    on left: 17 18 19 20 21, on right: 13 14 15 16
+Array (20)
+    on left: 22 23 24 25 26 27 28, on right: 3
+Values (21)
+    on left: 29 30 31 32 33, on right: 23 24 25 26 27 33
+
+
+State 0
+
+    0 $accept: . Json $end
+
+    LC      shift, and go to state 1
+    LB      shift, and go to state 2
+    STRING  shift, and go to state 3
+    NUMBER  shift, and go to state 4
+    TRUE    shift, and go to state 5
+    FALSE   shift, and go to state 6
+    VNULL   shift, and go to state 7
+
+    Json    go to state 8
+    Value   go to state 9
+    Object  go to state 10
+    Array   go to state 11
+
+
+State 1
+
+    9 Object: LC . RC
+   10       | LC . Members COMMA RC error
+   11       | LC . Members RC Value error
+   12       | LC . Members RC
+
+    RC      shift, and go to state 12
+    STRING  shift, and go to state 13
+
+    Members  go to state 14
+    Member   go to state 15
+
+
+State 2
+
+   22 Array: LB . RB
+   23      | LB . Values RB
+   24      | LB . Values RB RB error
+   25      | LB . Values RB COMMA error
+   26      | LB . Values RC error
+   27      | LB . Values error
+   28      | LB . COMMA error
+
+    LC      shift, and go to state 1
+    LB      shift, and go to state 2
+    RB      shift, and go to state 16
+    COMMA   shift, and go to state 17
+    STRING  shift, and go to state 3
+    NUMBER  shift, and go to state 4
+    TRUE    shift, and go to state 5
+    FALSE   shift, and go to state 6
+    VNULL   shift, and go to state 7
+
+    Value   go to state 18
+    Object  go to state 10
+    Array   go to state 11
+    Values  go to state 19
+
+
+State 3
+
+    4 Value: STRING .
+
+    $default  reduce using rule 4 (Value)
+
+
+State 4
+
+    5 Value: NUMBER .
+
+    $default  reduce using rule 5 (Value)
+
+
+State 5
+
+    6 Value: TRUE .
+
+    $default  reduce using rule 6 (Value)
+
+
+State 6
+
+    7 Value: FALSE .
+
+    $default  reduce using rule 7 (Value)
+
+
+State 7
+
+    8 Value: VNULL .
+
+    $default  reduce using rule 8 (Value)
+
+
+State 8
+
+    0 $accept: Json . $end
+
+    $end  shift, and go to state 20
+
+
+State 9
+
+    1 Json: Value .
+
+    $default  reduce using rule 1 (Json)
+
+
+State 10
+
+    2 Value: Object .
+
+    $default  reduce using rule 2 (Value)
+
+
+State 11
+
+    3 Value: Array .
+
+    $default  reduce using rule 3 (Value)
+
+
+State 12
+
+    9 Object: LC RC .
+
+    $default  reduce using rule 9 (Object)
+
+
+State 13
+
+   17 Member: STRING . COLON COLON error
+   18       | STRING . Value error
+   19       | STRING . COLON NUMBER NUMBER error
+   20       | STRING . COLON Value
+   21       | STRING . COMMA Value error
+
+    LC      shift, and go to state 1
+    LB      shift, and go to state 2
+    COLON   shift, and go to state 21
+    COMMA   shift, and go to state 22
+    STRING  shift, and go to state 3
+    NUMBER  shift, and go to state 4
+    TRUE    shift, and go to state 5
+    FALSE   shift, and go to state 6
+    VNULL   shift, and go to state 7
+
+    Value   go to state 23
+    Object  go to state 10
+    Array   go to state 11
+
+
+State 14
+
+   10 Object: LC Members . COMMA RC error
+   11       | LC Members . RC Value error
+   12       | LC Members . RC
+
+    RC     shift, and go to state 24
+    COMMA  shift, and go to state 25
+
+
+State 15
+
+   13 Members: Member .
+   14        | Member . COMMA RC error
+   15        | Member . COMMA error
+   16        | Member . COMMA Members
+
+    COMMA  shift, and go to state 26
+
+    COMMA     [reduce using rule 13 (Members)]
+    $default  reduce using rule 13 (Members)
+
+
+State 16
+
+   22 Array: LB RB .
+
+    $default  reduce using rule 22 (Array)
+
+
+State 17
+
+   28 Array: LB COMMA . error
+
+    error  shift, and go to state 27
+
+
+State 18
+
+   29 Values: Value .
+   30       | Value . COLON Value error
+   31       | Value . COMMA RB error
+   32       | Value . COMMA COMMA error
+   33       | Value . COMMA Values
+
+    COLON  shift, and go to state 28
+    COMMA  shift, and go to state 29
+
+    $default  reduce using rule 29 (Values)
+
+
+State 19
+
+   23 Array: LB Values . RB
+   24      | LB Values . RB RB error
+   25      | LB Values . RB COMMA error
+   26      | LB Values . RC error
+   27      | LB Values . error
+
+    error  shift, and go to state 30
+    RC     shift, and go to state 31
+    RB     shift, and go to state 32
+
+
+State 20
+
+    0 $accept: Json $end .
+
+    $default  accept
+
+
+State 21
+
+   17 Member: STRING COLON . COLON error
+   19       | STRING COLON . NUMBER NUMBER error
+   20       | STRING COLON . Value
+
+    LC      shift, and go to state 1
+    LB      shift, and go to state 2
+    COLON   shift, and go to state 33
+    STRING  shift, and go to state 3
+    NUMBER  shift, and go to state 34
+    TRUE    shift, and go to state 5
+    FALSE   shift, and go to state 6
+    VNULL   shift, and go to state 7
+
+    Value   go to state 35
+    Object  go to state 10
+    Array   go to state 11
+
+
+State 22
+
+   21 Member: STRING COMMA . Value error
+
+    LC      shift, and go to state 1
+    LB      shift, and go to state 2
+    STRING  shift, and go to state 3
+    NUMBER  shift, and go to state 4
+    TRUE    shift, and go to state 5
+    FALSE   shift, and go to state 6
+    VNULL   shift, and go to state 7
+
+    Value   go to state 36
+    Object  go to state 10
+    Array   go to state 11
+
+
+State 23
+
+   18 Member: STRING Value . error
+
+    error  shift, and go to state 37
+
+
+State 24
+
+   11 Object: LC Members RC . Value error
+   12       | LC Members RC .
+
+    LC      shift, and go to state 1
+    LB      shift, and go to state 2
+    STRING  shift, and go to state 3
+    NUMBER  shift, and go to state 4
+    TRUE    shift, and go to state 5
+    FALSE   shift, and go to state 6
+    VNULL   shift, and go to state 7
+
+    $default  reduce using rule 12 (Object)
+
+    Value   go to state 38
+    Object  go to state 10
+    Array   go to state 11
+
+
+State 25
+
+   10 Object: LC Members COMMA . RC error
+
+    RC  shift, and go to state 39
+
+
+State 26
+
+   14 Members: Member COMMA . RC error
+   15        | Member COMMA . error
+   16        | Member COMMA . Members
+
+    error   shift, and go to state 40
+    RC      shift, and go to state 41
+    STRING  shift, and go to state 13
+
+    Members  go to state 42
+    Member   go to state 15
+
+
+State 27
+
+   28 Array: LB COMMA error .
+
+    $default  reduce using rule 28 (Array)
+
+
+State 28
+
+   30 Values: Value COLON . Value error
+
+    LC      shift, and go to state 1
+    LB      shift, and go to state 2
+    STRING  shift, and go to state 3
+    NUMBER  shift, and go to state 4
+    TRUE    shift, and go to state 5
+    FALSE   shift, and go to state 6
+    VNULL   shift, and go to state 7
+
+    Value   go to state 43
+    Object  go to state 10
+    Array   go to state 11
+
+
+State 29
+
+   31 Values: Value COMMA . RB error
+   32       | Value COMMA . COMMA error
+   33       | Value COMMA . Values
+
+    LC      shift, and go to state 1
+    LB      shift, and go to state 2
+    RB      shift, and go to state 44
+    COMMA   shift, and go to state 45
+    STRING  shift, and go to state 3
+    NUMBER  shift, and go to state 4
+    TRUE    shift, and go to state 5
+    FALSE   shift, and go to state 6
+    VNULL   shift, and go to state 7
+
+    Value   go to state 18
+    Object  go to state 10
+    Array   go to state 11
+    Values  go to state 46
+
+
+State 30
+
+   27 Array: LB Values error .
+
+    $default  reduce using rule 27 (Array)
+
+
+State 31
+
+   26 Array: LB Values RC . error
+
+    error  shift, and go to state 47
+
+
+State 32
+
+   23 Array: LB Values RB .
+   24      | LB Values RB . RB error
+   25      | LB Values RB . COMMA error
+
+    $default  reduce using rule 23 (Array)
+
+
+State 33
+
+   17 Member: STRING COLON COLON . error
+
+    error  shift, and go to state 48
+
+
+State 34
+
+    5 Value: NUMBER .
+   19 Member: STRING COLON NUMBER . NUMBER error
+
+    NUMBER  shift, and go to state 49
+
+    $default  reduce using rule 5 (Value)
+
+
+State 35
+
+   20 Member: STRING COLON Value .
+
+    $default  reduce using rule 20 (Member)
+
+
+State 36
+
+   21 Member: STRING COMMA Value . error
+
+    error  shift, and go to state 50
+
+
+State 37
+
+   18 Member: STRING Value error .
+
+    $default  reduce using rule 18 (Member)
+
+
+State 38
+
+   11 Object: LC Members RC Value . error
+
+    error  shift, and go to state 51
+
+
+State 39
+
+   10 Object: LC Members COMMA RC . error
+
+    error  shift, and go to state 52
+
+
+State 40
+
+   15 Members: Member COMMA error .
+
+    $default  reduce using rule 15 (Members)
+
+
+State 41
+
+   14 Members: Member COMMA RC . error
+
+    error  shift, and go to state 53
+
+
+State 42
+
+   16 Members: Member COMMA Members .
+
+    $default  reduce using rule 16 (Members)
+
+
+State 43
+
+   30 Values: Value COLON Value . error
+
+    error  shift, and go to state 54
+
+
+State 44
+
+   31 Values: Value COMMA RB . error
+
+    error  shift, and go to state 55
+
+
+State 45
+
+   32 Values: Value COMMA COMMA . error
+
+    error  shift, and go to state 56
+
+
+State 46
+
+   33 Values: Value COMMA Values .
+
+    $default  reduce using rule 33 (Values)
+
+
+State 47
+
+   26 Array: LB Values RC error .
+
+    $default  reduce using rule 26 (Array)
+
+
+State 48
+
+   17 Member: STRING COLON COLON error .
+
+    $default  reduce using rule 17 (Member)
+
+
+State 49
+
+   19 Member: STRING COLON NUMBER NUMBER . error
+
+    error  shift, and go to state 57
+
+
+State 50
+
+   21 Member: STRING COMMA Value error .
+
+    $default  reduce using rule 21 (Member)
+
+
+State 51
+
+   11 Object: LC Members RC Value error .
+
+    $default  reduce using rule 11 (Object)
+
+
+State 52
+
+   10 Object: LC Members COMMA RC error .
+
+    $default  reduce using rule 10 (Object)
+
+
+State 53
+
+   14 Members: Member COMMA RC error .
+
+    $default  reduce using rule 14 (Members)
+
+
+State 54
+
+   30 Values: Value COLON Value error .
+
+    $default  reduce using rule 30 (Values)
+
+
+State 55
+
+   31 Values: Value COMMA RB error .
+
+    $default  reduce using rule 31 (Values)
+
+
+State 56
+
+   32 Values: Value COMMA COMMA error .
+
+    $default  reduce using rule 32 (Values)
+
+
+State 57
+
+   19 Member: STRING COLON NUMBER NUMBER error .
+
+    $default  reduce using rule 19 (Member)
