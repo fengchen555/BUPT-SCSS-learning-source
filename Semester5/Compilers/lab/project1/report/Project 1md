@@ -1,0 +1,753 @@
+# Project 1 - Lexical Analysis & Syntax Analysis 
+
+
+
+
+
+## Parser Requirements 
+
+### Basic requirements 
+
+​	You are required to implement a parser that accepts a single command line argument  (the BPL file path), and outputs the syntax tree of a syntactically valid BPL program,  or the message reporting all existing lexical/syntax errors in the code. You should compile your  parser as the bplc target in make, and move the executable to the bin directory.  For example, the Makefile is placed under the project root directory, then we make the  bplc target by:  make bplc  which generates the parser executable. Then we run the parser by:  bin/bplc  test/test 1 r01.bpl  the parser should output the corresponding result specified in the text file test/test 1 r01.out,  and we will verify the output by the diff utility.
+
+### Required features 
+
+Your parser should be able to recognize the following errors:  
+
+1. Lexical error (error type A) when there are undefined characters or tokens in the BPL  program, or identifiers starting with digits  
+2. Syntax error (error type B) when the program has an illegal structure, such as missing  closing symbol. Please find as many syntax errors as possible. 
+
+Additionally, you should implement these capabilities: 
+
+ •  Supporting hexadecimal representation of integers such as 0x12. You should be able  to detect illegal form of hex-int, like 0x5gg, and report lexical errors. 
+
+ • Supporting hex-form characters, such as \x90, also, you need to detect its illegal form  like \xt0 and report lexical errors.
+
+### Optional features 
+
+​	You are encouraged to implement other features that are not mentioned before. To show  your parser’s ability, you should provide your own testcases in the submitted files, and  clearly introduce them in the report. You may consider (but not limited to) the following  features adopted by most general-purpose programming languages:
+
+1.  single- and/or multi-line comment (C.3) 
+2.  macro preprocessor 
+3.   file inclusion 
+4.   for statements 
+
+
+
+
+
+## parser - myproject1
+
+### Auxiliary C++ classes
+
+​	既然为了打印语法树，所以我引用了一些C++的代码(因为C 没有类，只有结构体，还要写一些乱七八糟的代码)，所以使用C++的类和枚举类型（enum来表示各种类型节点）来实现，有关于AST树的各个节点的性质，类别，方便对各种各样的节点进行处理。
+
+所以有这样hpp代码:
+
+```c++
+//Node.hpp
+#include <string>
+#include <iostream>
+#include <vector>//向量
+#include <initializer_list>//初始化列表
+using namespace std;
+
+// 节点类型的枚举
+enum class TYPE
+{
+    MEDIAN,  // 中间节点
+    OTHER,   // 其他节点
+    TYPE,    // 类型节点
+    INT,     // 整数节点
+    CHAR,    // 字符节点
+    FLOAT,   // 浮点数节点
+    ID,      // 标识符节点
+    NOTHING, // 空节点
+};
+//最后生成的AST树的节点类型
+// AST 节点类
+class Node
+{
+public:
+    enum TYPE type;            // 节点类型
+    string name;               // AST 节点的名称
+    string content;            // 节点内容，可能是字符、整数、浮点数等
+    int line_num;              // 节点在源代码中的行号
+    vector<Node *> child;      // 子节点的指针向量
+
+public:
+    // 构造函数
+    explicit Node(enum TYPE type, string name, const string &content, int line);
+
+    // 析构函数
+    ~Node() = default;
+
+    // 添加子节点
+    void addChild(initializer_list<Node *> childs);
+
+    // 打印节点及其子节点信息
+    static void print(Node *node, long depth);
+};
+
+```
+
+cpp代码：
+
+```c++
+//Node.cpp
+#include "Node.hpp" // 包含节点类的头文件
+#include <iostream>
+
+// Node 类构造函数的实现
+Node::Node(TYPE type, string name, const string &content, int line):
+    type(type), name(name), content(content), line_num(line) {}
+
+// 向节点添加子节点的函数
+void Node::addChild(initializer_list<Node *> childs)
+{
+    // 遍历传入的初始化列表，并将其中的节点指针添加到当前节点的子节点向量中
+    for (auto temp : childs)
+    {
+        this->child.push_back(temp);
+    }
+}
+
+// 辅助函数，根据深度在控制台缩进显示节点名称
+void print_name(long depth, string name)
+{
+    for (long i = depth; i > 0; i--)
+    {
+        printf("  ");
+    }
+    printf("%s", name.c_str());
+}
+
+// 递归打印节点及其子节点信息的函数
+void Node::print(Node *node, long depth)
+{
+    // 根据节点类型选择不同的打印方式
+    switch (node->type)
+    {
+    case TYPE::MEDIAN:
+        // 打印中间节点的名称和行号
+        print_name(depth, node->name);
+        printf(" (%d)\n", node->line_num);
+        break;
+    case TYPE::OTHER:
+        // 打印其他类型节点的名称
+        print_name(depth, node->name);
+        printf("\n");
+        break;
+    case TYPE::INT:
+    case TYPE::FLOAT:
+    case TYPE::CHAR:
+    case TYPE::ID:
+    case TYPE::TYPE:
+        // 打印类型节点的名称、内容和行号
+        print_name(depth, node->name);
+        printf(": %s\n", node->content.c_str());
+        break;
+    default:
+        break;
+    }
+
+    // 递归打印子节点
+    for (Node *temp : node->child)
+    {
+        print(temp, depth + 1);
+    }
+}
+
+```
+
+
+
+### Flex for Lexical Analysis
+
+先定义一些头部引用的文件还有宏定义
+
+其中 #define YY_USER_ACTION：
+
+使用Bison的全局变量，并在每次匹配词时进行操作，记录，用于定位代码中出现问题的位置
+
+```tex
+%{
+    #include "Node.hpp"
+    #include "string.h"
+    #include "syntax.tab.h"
+    //使用Bison的全局变量，并在每次匹配词时进行操作，记录，用于定位代码中出现问题的位置
+    #define YY_USER_ACTION \
+        yylloc.first_line = yylineno; \
+        yylloc.last_line = yylineno; \
+        yylloc.first_column = yycolumn; \
+        yylloc.last_column = yycolumn + yyleng;\
+        yycolumn += yyleng;
+    //定义一些全局变量
+    int yycolumn = 1;//用于记录标记位置
+%}
+```
+
+使用内置的行计数器：
+
+```tex
+%option yylineno //记录行号
+%option noyywrap //不使用自带的yywrap函数
+```
+
+#### Regular matching representation
+
+一些正则匹配表示：
+
+```tex
+
+digit   [0-9]  //数字
+hex (0|[1-9a-fA-F][0-9a-fA-F]*) //十六进制数
+decimal_unit {digit}+ //十进制数
+hexadecimal_uint 0(x|X){hex} //十六进制整数
+int {decimal_unit}|{hexadecimal_uint} //整数
+normal_char (\').(\') //普通字符不包括16进制的
+hex_char (\')(\\)(x|X){hex}(\') //16进制字符
+char {normal_char}|{hex_char} //字符
+float  (0|[1-9][0-9]*)(\.){digit}+ //浮点数
+letter_ [a-zA-Z_] //字母+下划线
+id  {letter_}({letter_}|{digit})* //标识符
+escape_char [ \t\n\r] //转义字符
+ws {escape_char}+ //匹配多个转义字符
+
+```
+
+#### Lexer 
+
+```tex
+
+{ws} {
+      /* 不进行操作 */
+}//不进行操作
+"int"|"float"|"char" {
+    yylval.node = new Node(TYPE::TYPE,"TYPE",yytext,yylineno); 
+    return TYPE;
+}
+"struct" {
+    yylval.node = new Node(TYPE::OTHER,"STRUCT","struct",yylineno);
+    return STRUCT;
+}
+"if" {
+    yylval.node = new Node(TYPE::OTHER,"IF","if",yylineno);
+    return IF;
+}
+"else" {
+    yylval.node = new Node(TYPE::OTHER,"ELSE","else",yylineno);
+    return ELSE;
+}
+"while" {
+    yylval.node = new Node(TYPE::OTHER,"WHILE","while",yylineno);
+    return WHILE;
+}
+"return" {
+    yylval.node = new Node(TYPE::OTHER,"RETURN","return",yylineno);
+    return  RETURN;
+}
+"." {
+    yylval.node = new Node(TYPE::OTHER,"DOT",".",yylineno);
+    return DOT;
+}
+";" {
+    yylval.node = new Node(TYPE::OTHER,"SEMI",";",yylineno);
+    return SEMI;
+}
+"," {
+    yylval.node = new Node(TYPE::OTHER,"COMMA",",",yylineno);
+    return COMMA;
+}
+"=" {
+    yylval.node = new Node(TYPE::OTHER,"ASSIGN","=",yylineno);
+    return ASSIGN;
+}
+
+"<" {
+    yylval.node = new Node(TYPE::OTHER,"LT","<",yylineno);
+     return LT;
+}
+"<=" {
+    yylval.node = new Node(TYPE::OTHER,"LE","<=",yylineno);
+     return LE;
+}
+">" {
+    yylval.node = new Node(TYPE::OTHER,"GT",">",yylineno); 
+    return GT;
+}
+">=" {
+    yylval.node = new Node(TYPE::OTHER,"GE",">=",yylineno); 
+    return GE;
+}
+"!=" {
+    yylval.node = new Node(TYPE::OTHER,"NE","!=",yylineno); 
+    return NE;
+}
+"==" {
+    yylval.node = new Node(TYPE::OTHER,"EQ","==",yylineno); 
+    return EQ;
+}
+"+" {
+    yylval.node = new Node(TYPE::OTHER,"PLUS","+",yylineno);
+    return PLUS;
+}
+"-" {
+    yylval.node = new Node(TYPE::OTHER,"MINUS","-",yylineno);
+    return MINUS;
+}
+"*" {
+    yylval.node = new Node(TYPE::OTHER,"MUL","*",yylineno);
+    return MUL;
+}
+"/" {
+    yylval.node = new Node(TYPE::OTHER,"DIV","/",yylineno);
+    return DIV;
+}     
+"&&" {
+    yylval.node = new Node(TYPE::OTHER,"AND","&&",yylineno);
+    return AND;
+}
+"||" {
+    yylval.node = new Node(TYPE::OTHER,"OR","||",yylineno);
+    return OR;
+}
+"!" {
+    yylval.node = new Node(TYPE::OTHER,"NOT","!",yylineno);
+    return NOT;
+}     
+"(" {
+    yylval.node = new Node(TYPE::OTHER,"LP","(",yylineno);
+    return  LP;
+}        
+")" {
+    yylval.node = new Node(TYPE::OTHER,"RP",")",yylineno);
+    return RP;
+}
+"[" {
+    yylval.node = new Node(TYPE::OTHER,"LB","[",yylineno);
+    return LB;
+}
+"]" {
+    yylval.node = new Node(TYPE::OTHER,"RB","]",yylineno);
+    return RB;
+}
+"{" {
+    yylval.node = new Node(TYPE::OTHER,"LC","{",yylineno);
+    return LC;
+}
+"}" {
+    yylval.node = new Node(TYPE::OTHER,"RC","}",yylineno);
+    return RC;
+}
+"\"" {
+    
+}
+
+{int} {
+    yylval.node= new Node(TYPE::INT,"INT",yytext,yylineno);
+     return INT;
+}
+{float}  {
+    yylval.node = new Node(TYPE::FLOAT,"FLOAT",yytext,yylineno);
+    return FLOAT;
+}
+
+{hex_char}  {
+    if ((int)strlen(yytext) > 6) {//处理超过6位的十六进制数
+        printf("Error type A at Line %d: unknown lexem111e %s\n",yylineno,yytext);
+    return UNKNOWN;
+    }else { //处理小于6位的十六进制数
+        yylval.node = new Node(TYPE::CHAR,"CHAR",yytext,yylineno); return CHAR;
+        };
+} 
+{char}  {
+    yylval.node = new Node(TYPE::CHAR,"CHAR",yytext,yylineno);
+    return CHAR;
+}
+{id}    {
+    yylval.node = new Node(TYPE::ID,"ID",yytext,yylineno);
+    return ID;
+}
+
+{int}+{id}      {
+    printf("Error type A at Line %d: unknown lexeme %s\n",yylineno,yytext);
+}
+{char}+{id}     {
+    printf("Error type A at Line %d: unknown lexeme %s\n",yylineno,yytext);
+}
+{float}+{id} {
+    printf("Error type A at Line %d: unknown lexeme %s\n",yylineno,yytext);
+}
+{id}{char}+{id}* {
+    printf("Error type A at Line %d: unknown lexeme %s\n",yylineno,yytext);
+}
+{id}{float}+{id}* {
+    printf("Error type A at Line %d: unknown lexeme %s\n",yylineno,yytext);
+}
+(\').*(\') {
+    printf("Error type A at Line %d: unknown lexeme11 %s\n",yylineno,yytext);
+    return UNKNOWN;
+}//处理不合法的字符
+. {
+    printf("Error type A at Line %d: unknown lexeme %s\n",yylineno,yytext);
+    return UNKNOWN;
+}//处理不合法的任一符号
+
+%%
+```
+
+### Bison for Syntax Analysis
+
+#### Interacting Flex and Bison 
+
+```tex
+%{
+    #include"lex.yy.c"
+    void yyerror(const char*s);
+    bool type_A_Error = 0;
+    bool type_B_Error = 0;
+    Node* Ast_Tree;//语法树的根节点，树根，整个树
+%}
+%locations  //用于生成位置信息
+
+%union{
+     Node* node;
+} 
+```
+
+
+
+#### Token/nonterminal attributes 
+
+```tex
+
+// TOKEN
+%token <node> INT FLOAT CHAR ID TYPE STRUCT IF ELSE WHILE FOR RETURN
+%token <node> DOT SEMI COMMA ASSIGN LT LE GT GE NE EQ  
+%token <node> PLUS MINUS MUL DIV AND OR NOT LP RP LB RB LC RC //定义了运算符的优先级
+%token <node> UNKNOWN
+//nonterminal attributes
+%type <node> Program ExtDefList
+%type <node> ExtDef ExtDecList Specifier StructSpecifier VarDec
+%type <node> FunDec VarList ParamDec CompSt StmtList Stmt DefList
+%type <node> Def DecList Dec Args Exp
+```
+
+#### Conflict resolution 
+
+使用优先级来解决语法冲突
+
+```tex
+//定义优先级类别
+%nonassoc UELSE// 定义了else的优先级,处理else时不会引起二义性
+%nonassoc ELSE// 定义了else的优先级,处理else时不会引起二义性
+%right ASSIGN //对赋值语句赋予右结合
+%left OR AND //对与和或赋予左结合
+%left LT LE GT GE NE EQ //对比较运算符赋予左结合
+%left PLUS MINUS //对加减运算符赋予左结合
+%left MUL DIV //对乘除运算符赋予左结合
+%right NOT //对非运算符赋予右结合
+%left LP RP LB RB DOT LC RC   //指定了括号和点运算符的结合性和优先级
+```
+
+#### Syntax Analysis
+
+定义产生式，语法解析
+
+```tex
+
+/* high-level definition */ 
+Program: ExtDefList {
+    $$ = new Node(TYPE::MEDIAN,"Program","",@$.first_line);
+    $$->addChild({$1});
+    Ast_Tree = $$;
+};
+ExtDefList 
+    : {$$=new Node(TYPE::NOTHING,"ExtDefList","",@$.first_line);}//这里的ExtDefList可以为空
+    |ExtDef ExtDefList {
+        $$=new Node(TYPE::MEDIAN,"ExtDefList","",@$.first_line); $$->addChild({$1,$2});
+    }
+;
+ExtDef
+    : error ExtDecList SEMI    {printf("Error type B at Line %d: Missing specifier\n",@$.first_line); type_B_Error=1;}//这里的error是为了处理缺少Specifier的情况
+    | Specifier ExtDecList SEMI  {$$=new Node(TYPE::MEDIAN,"ExtDef","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Specifier SEMI             {$$=new Node(TYPE::MEDIAN,"ExtDef","",@$.first_line); $$->addChild({$1,$2});}
+    | Specifier FunDec CompSt    {$$=new Node(TYPE::MEDIAN,"ExtDef","",@$.first_line); $$->addChild({$1,$2,$3});}
+;
+ExtDecList
+    : VarDec  {$$=new Node(TYPE::MEDIAN,"ExtDecList","",@$.first_line); $$->addChild({$1});}
+    | VarDec COMMA ExtDecList   {$$=new Node(TYPE::MEDIAN,"ExtDecList","",@$.first_line); $$->addChild({$1,$2,$3});}   
+;
+/* specifier */ 
+Specifier
+    : TYPE     {$$=new Node(TYPE::MEDIAN,"Specifier","",@$.first_line); $$->addChild({$1});}
+    | StructSpecifier   {$$=new Node(TYPE::MEDIAN,"Specifier","",@$.first_line); $$->addChild({$1});}
+;         
+StructSpecifier
+    : STRUCT ID LC DefList RC    {$$=new Node(TYPE::MEDIAN,"StructSpecifier","",@$.first_line); $$->addChild({$1,$2,$3,$4,$5});}
+    | STRUCT ID     {$$=new Node(TYPE::MEDIAN,"StructSpecifier","",@$.first_line); $$->addChild({$1,$2});}
+;
+/* declarator */ 
+VarDec
+    : ID     {$$=new Node(TYPE::MEDIAN,"VarDec","",@$.first_line); $$->addChild({$1});}
+    | VarDec LB INT RB  {$$=new Node(TYPE::MEDIAN,"VarDec","",@$.first_line); $$->addChild({$1,$2,$3,$4});}   
+;
+FunDec
+    : ID LP error {$$=new Node(TYPE::MEDIAN,"FunDec","",@$.first_line); $$->addChild({$1,$2}); printf("Error type B at Line %d: Missing closing parenthesis ')'\n",@$.first_line); type_B_Error=1;}  
+    | ID LP VarList RP                      {$$=new Node(TYPE::MEDIAN,"FunDec","",@$.first_line); $$->addChild({$1,$2,$3,$4});}
+    | ID LP RP                                {$$=new Node(TYPE::MEDIAN,"FunDec","",@$.first_line); $$->addChild({$1,$2,$3});}
+;
+VarList
+    : ParamDec {$$=new Node(TYPE::MEDIAN,"VarList","",@$.first_line); $$->addChild({$1});}
+    | ParamDec COMMA VarList {$$=new Node(TYPE::MEDIAN,"VarList","",@$.first_line); $$->addChild({$1,$2,$3});}
+
+   
+    
+;
+ParamDec: Specifier VarDec {$$=new Node(TYPE::MEDIAN,"ParamDec","",@$.first_line); $$->addChild({$1,$2});}
+;
+/* statement */ 
+CompSt: LC DefList StmtList RC {$$=new Node(TYPE::MEDIAN,"CompSt","",@$.first_line); $$->addChild({$1,$2,$3,$4});}
+;
+
+StmtList
+    :               {$$=new Node(TYPE::NOTHING,"StmtList","",@$.first_line);}//这里的StmtList可以为空
+    |Stmt StmtList  {$$=new Node(TYPE::MEDIAN,"StmtList","",@$.first_line); $$->addChild({$1,$2});}
+;
+Stmt
+    : Exp SEMI                                {$$=new Node(TYPE::MEDIAN,"Stmt","",@$.first_line); $$->addChild({$1,$2});}
+    | CompSt                                  {$$=new Node(TYPE::MEDIAN,"Stmt","",@$.first_line); $$->addChild({$1});}
+    | RETURN Exp error                        {$$=new Node(TYPE::MEDIAN,"Stmt","",@$.first_line); $$->addChild({$1,$2}); printf("Error type B at Line %d: Missing semicolon ';'\n",@$.first_line); type_B_Error = 1;}
+    | RETURN Exp SEMI                         {$$=new Node(TYPE::MEDIAN,"Stmt","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | IF LP Exp RP Stmt  %prec UELSE          {$$=new Node(TYPE::MEDIAN,"Stmt","",@$.first_line); $$->addChild({$1,$2,$3,$4,$5});}
+    | IF LP Exp RP Stmt ELSE Stmt             {$$=new Node(TYPE::MEDIAN,"Stmt","",@$.first_line); $$->addChild({$1,$2,$3,$4,$5,$6,$7});}
+    | WHILE LP Exp RP Stmt                    {$$=new Node(TYPE::MEDIAN,"Stmt","",@$.first_line); $$->addChild({$1,$2,$3,$4,$5});}
+    | FOR LP Exp SEMI Exp SEMI Exp RP Stmt    {$$=new Node(TYPE::MEDIAN,"Stmt","",@$.first_line); $$->addChild({$1,$2,$3,$4,$5,$6,$7,$8,$9});}
+; 
+/* local definition */ 
+DefList 
+    :           {$$=new Node(TYPE::NOTHING,"DefList","",@$.first_line);}//这里的DefList可以为空
+    | Def DefList   {$$=new Node(TYPE::MEDIAN,"DefList","",@$.first_line); $$->addChild({$1,$2});}       
+;
+Def 
+    : Specifier DecList error   {$$=new Node(TYPE::MEDIAN,"Def","",@$.first_line); $$->addChild({$1,$2}); printf("Error type B at Line %d: Missing semicolon ';'\n",@$.first_line); type_B_Error = 1;}
+    | Specifier DecList SEMI    {$$=new Node(TYPE::MEDIAN,"Def","",@$.first_line); $$->addChild({$1,$2,$3});}
+;
+DecList 
+    :Dec    {$$=new Node(TYPE::MEDIAN,"DecList","",@$.first_line); $$->addChild({$1});}
+    | Dec COMMA DecList {$$=new Node(TYPE::MEDIAN,"DecList","",@$.first_line); $$->addChild({$1,$2,$3});}
+;
+Dec 
+    :  VarDec   {$$=new Node(TYPE::MEDIAN,"Dec","",@$.first_line); $$->addChild({$1});}
+    | VarDec  ASSIGN  Exp   {$$=new Node(TYPE::MEDIAN,"Dec","",@$.first_line); $$->addChild({$1,$2,$3});}
+;
+/* Expression  */ 
+Exp 
+    : Exp ASSIGN Exp    {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Exp AND Exp       {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}   
+    | Exp OR Exp        {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});} 
+    | Exp LT Exp        {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});} 
+    | Exp LE Exp        {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});} 
+    | Exp GT Exp        {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Exp GE Exp        {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});} 
+    | Exp NE Exp        {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Exp EQ Exp        {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Exp PLUS Exp      {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Exp MINUS Exp     {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Exp MUL Exp   {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Exp DIV Exp   {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | LP  Exp  RP   {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | MINUS Exp      {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2});}
+    | NOT Exp           {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2});}  
+    | ID  LP Args error {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3}); printf("Error type B at Line %d: Missing closing parenthesis ')'\n",@$.first_line); type_B_Error = 1;}
+    | ID  LP Args RP    {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3,$4});}
+    | ID LP RP          {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | Exp  LB  Exp  RB  {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3,$4});}
+    | Exp DOT ID        {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1,$2,$3});}
+    | ID   /*ID*/       {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1});}//这里多打了一个ID找了半天
+    | INT               {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1});}
+    | FLOAT             {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1});}
+    | CHAR              {$$=new Node(TYPE::MEDIAN,"Exp","",@$.first_line); $$->addChild({$1});}
+    | UNKNOWN           {type_A_Error = 1;}
+;
+Args 
+    : Exp             {$$=new Node(TYPE::MEDIAN,"Args","",@$.first_line); $$->addChild({$1});}
+    | Exp COMMA Args  {$$=new Node(TYPE::MEDIAN,"Args","",@$.first_line); $$->addChild({$1,$2,$3});}
+;
+
+
+%%
+```
+
+#### Parser main function
+
+自定义main语法解析器，根据给的要求实现可以调用解释器，不使用自带的yyerror函数，自己对错误解析打印错误信息，对成功解析打印出AST语法树
+
+```c++
+//下面的main自定义error处理函数
+void yyerror(const char*s){
+    //不处理
+}
+int main(int argc, char** argv){
+    if(argc <= 1) {
+        printf("Please input the file name!\n");
+        return 1;
+    }
+    else{
+        FILE* f = fopen(argv[1],"r");
+        if(!f){
+            printf("File open failed!\n");
+            return 1;
+        }
+    
+        yyrestart(f);
+        //yyparse();
+        if(!yyparse() && (type_A_Error == 0) &&(type_B_Error == 0)){
+            // printf("Congratulations! No syntax error!\n");
+            Node::print(Ast_Tree,0);
+        }
+        else{
+            // printf("Sorry! There are syntax errors!\n");
+        }
+    }
+    return 0;
+}
+
+```
+
+#### WriteMakeFile
+
+```makefile
+CC=gcc
+CPP=g++
+FLEX=flex
+BISON=bison
+
+bplc:
+	@rm -rf bin/# 删除已经存在的 bin 目录，加上 || true 避免在 bin 目录不存在时报错
+	@mkdir -p bin         # 使用 -p 选项，确保 bin 目录存在，避免目录已存在时报错
+	@touch bin/bplc
+	@chmod +x bin/bplc
+	$(BISON) -t -d syntax.y
+	$(FLEX) lex.l
+	$(CPP) Node.hpp Node.cpp syntax.tab.c -lfl -ly -o bin/bplc  # bplc输出路径为: bin/bplc
+
+clean:
+	@rm -rf bin/
+
+.PHONY: bplc clean
+
+```
+
+
+
+### python test compiler
+
+用python代码测试样例并写入到指定文件中：
+
+```python
+import subprocess
+import os
+
+def build_compiler():
+    try:
+        # 调用 make 命令来编译你的代码
+        subprocess.run(["make", "bplc"])
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error while building compiler: {e}")
+
+def run_compiler(input_file, output_file):
+    try:
+        # 创建输出文件所在的目录
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+        # 调用编译器并传递输入文件作为参数，并将标准输出重定向到文件
+        with open(output_file, 'w') as f:
+            subprocess.run(["bin/bplc", input_file], stdout=f)
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error while running compiler: {e}")
+
+if __name__ == "__main__":
+    # 编译你的代码
+    build_compiler()
+
+    # 运行编译器并传递输入文件（替换为你的实际输入文件路径）
+    for i in range(1, 13):
+        print("----------------------------------------------------------------")
+        temp = i
+        input_file = "test/test_1_r" + str(temp).zfill(2) + ".bpl"
+        #output_file = "out/test_1_r" + str(temp).zfill(2) + ".out"
+        output_file = "test/test_1_r" + str(temp).zfill(2) + ".out"
+        print("Test " + str(i) + ":")
+        run_compiler(input_file, output_file)
+    
+
+    print("The output has been saved in the test folder")
+
+```
+
+
+
+![image-20231122192143897](http://typora-image-fengchen.oss-cn-beijing.aliyuncs.com/img/image-20231122192143897.png)
+
+![image-20231122192221619](http://typora-image-fengchen.oss-cn-beijing.aliyuncs.com/img/image-20231122192221619.png)
+
+![image-20231122192234068](http://typora-image-fengchen.oss-cn-beijing.aliyuncs.com/img/image-20231122192234068.png)
+
+​	可以看出成功对12个样例进行了测试，生成了对应的.out文件。也可以看到对错误信息进行了打印和对成功解析，打印AST树。**具体的out可以参见test的out文件或者我单独输出到的out文件夹**
+
+​	应该是通过了10个测试样例。
+
+### Optional features implementations
+
+额外样例在test-extra文件夹中实现，测试代码为：test_extra.py
+
+#### single- and/or multi-line comment
+
+参考这个介绍实现对注释的处理
+
+![image-20231122194907907](http://typora-image-fengchen.oss-cn-beijing.aliyuncs.com/img/image-20231122194907907.png)
+
+在lex.l中添加代码：
+
+```c
+"//" {
+    /*可选功能 识别注释*/
+    // 单行注释，忽略直到换行符
+    char c;
+    do {
+        c = yyinput();
+    } while (c != '\n');
+    unput(c);
+}   
+"/*" {
+    // 多行注释，忽略直到遇到 "*/"
+    char c;
+    do {
+        c = yyinput();
+    } while (c != '*' || yyinput() != '/');
+}
+```
+
+测试样例及通过样例：
+
+![image-20231122200158023](http://typora-image-fengchen.oss-cn-beijing.aliyuncs.com/img/image-20231122200158023.png)
+
+
+
+
+
+
+
+## at last
+
+​	至此整个实验完成，实现了对测试样例的测试，对存在错误信息的进行打印错误信息，对正确的样例输出了AST语法树。还在可选功能上实现了对单行注释和多行注释的处理。
+
+文件分布详情：
+
+
+
+![image-20231122202417421](http://typora-image-fengchen.oss-cn-beijing.aliyuncs.com/img/image-20231122202417421.png)
